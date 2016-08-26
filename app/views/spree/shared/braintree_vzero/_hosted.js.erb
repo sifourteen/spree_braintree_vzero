@@ -1,0 +1,113 @@
+function (clientErr, clientInstance) {
+  if (clientErr) {
+    showError();
+    return;
+  }
+
+  <% if payment_method.preferred_advanced_fraud_tools %>
+    briantree.dataCollector.create({
+      client: clientInstance,
+      kount: true
+    }, 
+    function (dataCollectorErr, dataCollectorInstance) {
+      if (clientErr) {
+        return;
+      }
+
+      if(!SpreeBraintreeVzero.admin) {
+        SpreeBraintreeVzero.deviceData = dataCollectorInstance.deviceData;
+      }
+
+      <%= render partial: 'spree/checkout/payment/braintree_vzero/hosted_fields_data_collector', formats: [:js] %>
+    });
+  <% end %>
+
+  braintree.hostedFields.create({
+    client: clientInstance,
+    styles: {
+      <%= render partial: 'spree/checkout/payment/braintree_vzero/hosted_fields_styles', formats: [:js] %>
+    },
+
+    fields: {
+      number: {
+        selector: "<%= payment_method.preferred_number_selector %>",
+        placeholder: "<%= payment_method.preferred_number_placeholder %>"
+      },
+      cvv: {
+        selector: "<%= payment_method.preferred_cvv_selector %>",
+        placeholder: "<%= payment_method.preferred_cvv_placeholder %>"
+      },
+      expirationDate: {
+        selector: "<%= payment_method.preferred_expiration_date_selector %>",
+        placeholder: "<%= payment_method.preferred_expiration_date_placeholder %>"
+      }
+    }
+  },
+  function (hostedFieldsErr, hostedFieldsInstance) {
+    if (hostedFieldsErr) {
+      showError();
+      return;
+    }
+
+    <%= render partial: 'spree/checkout/payment/braintree_vzero/hosted_fields_on_field_event_callback', formats: [:js] %>
+
+    function onFormSubmit(event) {
+      event.preventDefault();
+
+      hostedFieldsInstance.tokenize(function (tokenizeErr, payload) {
+        if(tokenizeErr) {
+          showError();
+          return;
+        }
+
+        function prepareForSubmit(payload) {
+          $form
+            .append('<input type="hidden" name="braintree_last_two" value=' + payload.details.lastTwo + '>')
+            .append('<input type="hidden" name="braintree_card_type" value=' + payload.details.cardType.replace(/\s/g, '') + '>');
+
+          if(SpreeBraintreeVzero.admin) {
+            $form.append('<input type="hidden" name="payment_method_nonce" value=' + payload.nonce + '>');
+          }
+          else {
+            $form.append('<input type="hidden" name="order[payments_attributes][][braintree_nonce]" value=' + payload.nonce + '>');
+          }
+
+          $form
+            .off('submit', onFormSubmit)
+            .submit();
+        }
+
+        if(SpreeBraintreeVzero.threeDSecure) {
+          braintree.threeDSecure.create({
+            client: clientInstance
+          }, 
+          function (threeDSecureErr, threeDSecureInstance) {
+            if (threeDSecureErr) {
+              showError();
+              return;
+            }
+
+            threeDSecure.verifyCard({
+              amount: <%= @order.total %>,
+              nonce: payload.nonce
+            }, 
+            function (error, response) {
+              if (err) {
+                showError();
+                return;
+              }
+
+              <%= render partial: 'spree/checkout/payment/braintree_vzero/hosted_fields_three_d_secure', formats: [:js] %>
+
+              prepareForSubmit(payload);
+            });
+          });
+        } 
+        else {
+          prepareForSubmit(payload);
+        }
+      });
+    }
+
+    $form.on('submit', onFormSubmit);
+  });

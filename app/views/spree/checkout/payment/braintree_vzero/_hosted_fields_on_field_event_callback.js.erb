@@ -1,12 +1,34 @@
-// if (event.type === "focus") {
-//   console.log('focus');
-// } else if (event.type === "blur") {
-//   console.log('blur');
-// } else if (event.type === "fieldStateChange") {
-//   console.log('fieldStateChange');
-//   console.log(event.isValid); // true|false
-//   if (event.card) {
-//     console.log(event.card.type);
-//     // visa|master-card|american-express|diners-club|discover|jcb|unionpay|maestro
-//   }
-// }
+var validFields = {};
+
+hostedFieldsInstance.on('cardTypeChange', function (event) { 
+	var field = event.fields[event.emittedBy];
+			$field = $(field.container);
+
+	for(var i = 0; i < SpreeBraintreeVzero.cards.length; i++) {
+		$field.removeClass(SpreeBraintreeVzero.cards[i]);
+	}
+
+	$field.removeClass('credit-card');
+
+	if(!field.isEmpty && event.cards.length) {
+		$field.addClass('credit-card ' + event.cards[0].type);
+	}
+});
+
+hostedFieldsInstance.on('validityChange', function (event) { 
+	var fields = Object.keys(event.fields);
+			field = event.fields[event.emittedBy];
+
+	if(field.isValid) {
+		validFields[event.emittedBy] = true;
+	}
+	else {
+		delete validFields[event.emittedBy];
+	}
+
+	$submit.prop('disabled', Object.keys(validFields).length !== fields.length);
+});
+
+hostedFieldsInstance.on('inputSubmitRequest', function (event) { 
+	$submit.trigger('click');
+});
