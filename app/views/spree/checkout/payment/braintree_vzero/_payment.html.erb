@@ -17,11 +17,7 @@
   <% end %>
 <% end %>
 
-<% if paypal %>
-  <div id="paypal-container">
-<% elsif display_payment_methods_list %>
-  <div class="new-braintree-payment-method">
-<% end %>
+<div <% if paypal %> id="paypal-container" <% elsif display_payment_methods_list %> class="new-braintree-payment-method" <% else %> class="braintree-payment-fields" <% end %>>
 
   <% if hosted %>
     <div class="row">
@@ -50,9 +46,7 @@
     <div id="payment-form"></div>
   <% end %>
 
-<% if paypal || display_payment_methods_list %>
-  </div>
-<% end %>
+</div>
 
 <% if dropin || paypal %>
   <script src="https://js.braintreegateway.com/v2/braintree.js"></script>
